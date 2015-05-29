@@ -1,0 +1,40 @@
+#!/bin/sh
+
+DEBUG=""
+DATE=$(date +%Y%m%d)
+HOSTNAME=`/bin/hostname`
+AMINAME="$DATE-$HOSTNAME-AMI"
+AMIDESC="$HOSTNAME backup to AMI on $DATE"
+
+EC2_INSTANCE_ID="`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id || die \"wget instance-id has failed: $?\"`"
+test -n "$EC2_INSTANCE_ID" || die 'cannot obtain instance-id'
+EC2_AVAIL_ZONE="`wget -q -O - http://169.254.169.254/latest/meta-data/placement/availability-zone || die \"wget availability-zone has failed: $?\"`"
+test -n "$EC2_AVAIL_ZONE" || die 'cannot obtain availability-zone'
+EC2_REGION="`echo \"$EC2_AVAIL_ZONE\" | sed -e 's:\([0-9][0-9]*\)[a-z]*\$:\\1:'`"
+
+
+#set java_home to support ec2 commands // Make sure to install ec2cli : wget http://s3.amazonaws.com/ec2-downloads/ec2-api-tools.zip
+export JAVA_HOME="/usr/lib/jvm/java-7-openjdk-amd64/jre"
+export EC2_HOME="/usr"
+export AWS_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXXX
+export AWS_SECRET_KEY=YYYYYYYYYYYYYYYYYYYYYY
+
+# set PATH so it includes user's private bin if it exists
+    PATH="$HOME/bin:$JAVA_HOME/bin:$PATH"
+
+[ $DEBUG ] && echo "HOME = $HOME"
+[ $DEBUG ] && echo "JAVA_HOME = $JAVA_HOME"
+[ $DEBUG ] && echo "EC2_HOME = $EC2_HOME"
+[ $DEBUG ] && echo "EC2_INSTANCE_ID = $EC2_INSTANCE_ID"
+[ $DEBUG ] && echo "EC2_REGION = $EC2_REGION"
+[ $DEBUG ] && echo "EC2_AVAIL_ZONE = $EC2_AVAIL_ZONE"
+[ $DEBUG ] && echo "AWS_ACCESS_KEY = $AWS_ACCESS_KEY"
+[ $DEBUG ] && echo "AWS_SECRET_KEY = $AWS_SECRET_KEY"
+[ $DEBUG ] && echo
+[ $DEBUG ] && echo "PATH=$PATH"
+[ $DEBUG ] && echo
+
+echo "Backing up server=$EC2_INSTANCE_ID in region=$EC2_REGION with backup AMI name=$AMINAME"
+
+$EC2_HOME/bin/ec2-create-image $EC2_INSTANCE_ID --region $EC2_REGION --name $AMINAME --description $AMIDESC
+
